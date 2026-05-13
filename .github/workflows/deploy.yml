@@ -1,30 +1,33 @@
-name: Dev CI/CD with Coverage
+name: Public CI
 
 on:
   push:
-    branches: [ dev ]
+    branches: [ main, master, dev, public ]
+  pull_request:
+  workflow_dispatch:
 
-env:
-  TOMCAT_APP_DIR: ${{ secrets.TOMCAT_APP_DIR_TEST_ENV }}
-  TOMCAT_ARCHIVE_DIR: ${{ secrets.TOMCAT_ARCHIVE_DIR_TEST_ENV }}
+permissions:
+  contents: read
 
 jobs:
-  build-test-deploy:
-    runs-on: [self-hosted, Linux, X64, test]
+  build-test-package:
+    runs-on: ubuntu-latest
 
     env:
       SPRING_PROFILES_ACTIVE: test
-      NEBULA_DB_URL: ${{ secrets.NEBULA_DB_URL }}
-      NEBULA_USERNAME: ${{ secrets.NEBULA_USERNAME }}
-      NEBULA_PASSWORD: ${{ secrets.NEBULA_PASSWORD }}
-      NEBULA_TEST_DB_URL: ${{ secrets.NEBULA_TEST_DB_URL }}
-      NEBULA_TEST_USERNAME: ${{ secrets.NEBULA_TEST_USERNAME }}
-      NEBULA_TEST_PASSWORD: ${{ secrets.NEBULA_TEST_PASSWORD }}
-      USER_AVATAR_UPLOAD_TEST_PATH: ${{ secrets.USER_AVATAR_UPLOAD_TEST_PATH }}
-      ANDROMEDA_AUTH_SERV_TEST_URL: ${{ secrets.ANDROMEDA_AUTH_SERV_TEST_URL }}
-      HEADER_FOR_AUTH_SERVER: ${{ secrets.HEADER_FOR_AUTH_SERVER }}
-      APP_JWT_SECRET: ${{ secrets.APP_JWT_SECRET }}
-      IMAGE_AVATAR_PATH: ${{ secrets.IMAGE_AVATAR_PATH }}
+      HEADER_FOR_AUTH_SERVER: nebula-rest-api
+      APP_JWT_SECRET: VGhpc0lzQVB1YmxpY1ByZXZpZXdKV1RTZWNyZXRGb3JUZXN0aW5nT25seTEyMzQ1Njc4OTA=
+      APP_RESOURCES_BASE_URL: https://cdn.example.com/resources/nebula/
+      CORS_ALLOWED_ORIGIN_PATTERNS: https://app.example.com,https://*.app.example.com
+      IMAGE_AVATAR_PATH: /tmp/nebula/avatars
+      NEBULA_DB_URL: jdbc:mariadb://localhost:3306/nebula
+      NEBULA_USERNAME: nebula
+      NEBULA_PASSWORD: nebula
+      NEBULA_TEST_DB_URL: jdbc:mariadb://localhost:3306/nebula_test
+      NEBULA_TEST_USERNAME: nebula
+      NEBULA_TEST_PASSWORD: nebula
+      ANDROMEDA_AUTH_SERV_URL: https://auth.example.com/andromeda
+      ANDROMEDA_AUTH_SERV_TEST_URL: https://auth-test.example.com/andromeda
 
     steps:
       - uses: actions/checkout@v4
@@ -34,9 +37,37 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+          cache: 'maven'
 
-      - name: Build and Test
-        run: ./mvnw -B clean verify -DtrimStackTrace=false
+      - name: Prepare local environment file for tests
+        run: |
+          mkdir -p "$IMAGE_AVATAR_PATH"
+          cat <<EOF > .env
+          ANDROMEDA_AUTH_SERV_URL=${ANDROMEDA_AUTH_SERV_URL}
+          ANDROMEDA_AUTH_SERV_TEST_URL=${ANDROMEDA_AUTH_SERV_TEST_URL}
+          APP_JWT_SECRET=${APP_JWT_SECRET}
+          APP_RESOURCES_BASE_URL=${APP_RESOURCES_BASE_URL}
+          CORS_ALLOWED_ORIGIN_PATTERNS=${CORS_ALLOWED_ORIGIN_PATTERNS}
+          HEADER_FOR_AUTH_SERVER=${HEADER_FOR_AUTH_SERVER}
+          IMAGE_AVATAR_PATH=${IMAGE_AVATAR_PATH}
+          NEBULA_DB_URL=${NEBULA_DB_URL}
+          NEBULA_USERNAME=${NEBULA_USERNAME}
+          NEBULA_PASSWORD=${NEBULA_PASSWORD}
+          NEBULA_TEST_DB_URL=${NEBULA_TEST_DB_URL}
+          NEBULA_TEST_USERNAME=${NEBULA_TEST_USERNAME}
+          NEBULA_TEST_PASSWORD=${NEBULA_TEST_PASSWORD}
+          EOF
+
+      - name: Run unit and slice tests
+        run: ./mvnw -B test -DtrimStackTrace=false
+
+      - name: Package application artifact
+        run: ./mvnw -B -DskipTests package
+
+      - name: Generate build metadata
+        run: |
+          WAR_FILE=$(ls target/*.war | head -n 1)
+          sha256sum "$WAR_FILE" > "$WAR_FILE.sha256"
 
       - name: Upload Coverage Report
         uses: actions/upload-artifact@v4
@@ -44,29 +75,10 @@ jobs:
           name: code-coverage-report
           path: target/site/jacoco/
 
-      - name: Deploy
-        if: github.event_name == 'push'
-        run: |
-          set -euo pipefail
-
-          APP_DIR="${TOMCAT_APP_DIR}"
-          ARCHIVE_DIR="${TOMCAT_ARCHIVE_DIR}"
-
-          sudo chown -R wolf:wolf "$(dirname "$APP_DIR")"
-          mkdir -p "$APP_DIR" "$ARCHIVE_DIR"
-
-          FULL_WAR_NAME=$(ls target/*.war | xargs basename)
-          VERSION=$(echo "$FULL_WAR_NAME" | sed 's/nebula-rest-api-//;s/.war//')
-
-          # 1) remove false dirs that looks like .war
-          find "$APP_DIR" -maxdepth 1 -type d -name 'nebula-rest-api##*.war' -exec rm -rf {} +
-
-          # 2) delete only .war (without dir conflicts)
-          find "$APP_DIR" -maxdepth 1 -type f -name 'nebula-rest-api##*.war' -delete
-
-          # 3) copy new artifacts
-          cp target/*.war "$ARCHIVE_DIR/nebula-rest-api##$VERSION.war"
-          cp target/*.war "$APP_DIR/nebula-rest-api##latest.war"
-          
-          sudo chown -R wolf:wolf "$APP_DIR" "$ARCHIVE_DIR"
-          docker restart tomcat-test-nebula
+      - name: Upload packaged artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nebula-rest-api-package
+          path: |
+            target/*.war
+            target/*.war.sha256
