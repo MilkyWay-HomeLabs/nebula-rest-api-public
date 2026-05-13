@@ -1,0 +1,72 @@
+name: Dev CI/CD with Coverage
+
+on:
+  push:
+    branches: [ dev ]
+
+env:
+  TOMCAT_APP_DIR: ${{ secrets.TOMCAT_APP_DIR_TEST_ENV }}
+  TOMCAT_ARCHIVE_DIR: ${{ secrets.TOMCAT_ARCHIVE_DIR_TEST_ENV }}
+
+jobs:
+  build-test-deploy:
+    runs-on: [self-hosted, Linux, X64, test]
+
+    env:
+      SPRING_PROFILES_ACTIVE: test
+      NEBULA_DB_URL: ${{ secrets.NEBULA_DB_URL }}
+      NEBULA_USERNAME: ${{ secrets.NEBULA_USERNAME }}
+      NEBULA_PASSWORD: ${{ secrets.NEBULA_PASSWORD }}
+      NEBULA_TEST_DB_URL: ${{ secrets.NEBULA_TEST_DB_URL }}
+      NEBULA_TEST_USERNAME: ${{ secrets.NEBULA_TEST_USERNAME }}
+      NEBULA_TEST_PASSWORD: ${{ secrets.NEBULA_TEST_PASSWORD }}
+      USER_AVATAR_UPLOAD_TEST_PATH: ${{ secrets.USER_AVATAR_UPLOAD_TEST_PATH }}
+      ANDROMEDA_AUTH_SERV_TEST_URL: ${{ secrets.ANDROMEDA_AUTH_SERV_TEST_URL }}
+      HEADER_FOR_AUTH_SERVER: ${{ secrets.HEADER_FOR_AUTH_SERVER }}
+      APP_JWT_SECRET: ${{ secrets.APP_JWT_SECRET }}
+      IMAGE_AVATAR_PATH: ${{ secrets.IMAGE_AVATAR_PATH }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Build and Test
+        run: ./mvnw -B clean verify -DtrimStackTrace=false
+
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage-report
+          path: target/site/jacoco/
+
+      - name: Deploy
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+
+          APP_DIR="${TOMCAT_APP_DIR}"
+          ARCHIVE_DIR="${TOMCAT_ARCHIVE_DIR}"
+
+          sudo chown -R wolf:wolf "$(dirname "$APP_DIR")"
+          mkdir -p "$APP_DIR" "$ARCHIVE_DIR"
+
+          FULL_WAR_NAME=$(ls target/*.war | xargs basename)
+          VERSION=$(echo "$FULL_WAR_NAME" | sed 's/nebula-rest-api-//;s/.war//')
+
+          # 1) remove false dirs that looks like .war
+          find "$APP_DIR" -maxdepth 1 -type d -name 'nebula-rest-api##*.war' -exec rm -rf {} +
+
+          # 2) delete only .war (without dir conflicts)
+          find "$APP_DIR" -maxdepth 1 -type f -name 'nebula-rest-api##*.war' -delete
+
+          # 3) copy new artifacts
+          cp target/*.war "$ARCHIVE_DIR/nebula-rest-api##$VERSION.war"
+          cp target/*.war "$APP_DIR/nebula-rest-api##latest.war"
+          
+          sudo chown -R wolf:wolf "$APP_DIR" "$ARCHIVE_DIR"
+          docker restart tomcat-test-nebula

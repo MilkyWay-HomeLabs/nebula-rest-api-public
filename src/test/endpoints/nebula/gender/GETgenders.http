@@ -1,0 +1,6 @@
+GET https://localhost:8081/api/v1/genders
+
+# public endpoint
+# Examples
+# GET https://nebula.test.milkyway/api/v1/genders
+# GET http://localhost:8081/api/v1/genders

@@ -1,0 +1,16 @@
+POST https://localhost:8081/api/v1/account/register
+Content-Type: application/json
+
+# used to registe new accounts, if success then return true with type "VERIFICATION_MAIL_FROM_REGISTRATION"
+# Examples
+# POST https://nebula.test.milkyway/api/v1/account/register
+# POST http://localhost:8081/api/v1/account/register
+
+{
+  "login": "test_abc_001",
+  "email": "test_abc_001@test.net",
+  "password": "test_abc_001",
+  "birthdate": "2005-01-25T07:56:15.655Z",
+  "nationality": 80,
+  "gender": 1
+}

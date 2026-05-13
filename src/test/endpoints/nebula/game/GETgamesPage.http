@@ -1,0 +1,13 @@
+GET https://localhost:8081/api/v1/games?page=0&size=2&sortBy=name&sortOrder=asc&name=r&enable=false
+
+# public endpoint, return page games
+# Allowed params
+#page : 3 - number of page
+#size : 10 - page size
+#sortBy : name - sort criteria
+#sortOrder : ASC - ascentding or desceding order
+#name : em - contains name
+#enable : true - returns enabled or disabled entries
+# Examples
+# GET https://nebula.test.milkyway/api/v1/games?page=0&size=2&sortBy=name&sortOrder=asc&name=r&enable=false
+# GET http://localhost:8081/api/v1/games?page=0&size=2&sortBy=name&sortOrder=asc&name=r&enable=false

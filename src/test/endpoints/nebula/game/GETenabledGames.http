@@ -1,0 +1,6 @@
+GET https://localhost:8081/api/v1/games/enabled
+
+# public endpoint, return enabled games
+# Examples
+# GET https://nebula.test.milkyway/api/v1/games/enabled
+# GET http://localhost:8081/api/v1/games/enabled
