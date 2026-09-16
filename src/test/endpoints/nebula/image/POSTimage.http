@@ -1,0 +1,18 @@
+# FIXME: not working
+POST https://localhost:8081/api/v1/image
+Content-Type: multipart/form-data
+Cookie: accessToken=eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiIyZWM5ZWRjZS1lZTFlLTRmMzQtYmNkZi1iYmFmN2NiN2JiNGYiLCJzdWIiOiIxMjM0NTY4MDciLCJpc3MiOiJBbmRyb21lZGFBdXRoQXBpIiwicm9sZXMiOlt7ImlkIjoxLCJuYW1lIjoiUk9MRV9VU0VSIn1dLCJ2ZXJzaW9uIjo2LCJyZXZva2VkIjpmYWxzZSwiaWF0IjoxNzc4MTcwNzk1LCJleHAiOjE3NzgxNzEwOTV9.C8g_frd24yRc-YCfgphtOUDfUF8YbFSIQr7Oi-mJor7lBtqVoPRy-ddoEE5_D7sn3Jj0ojV1Xl7k_G3SOe-clg
+--boundary
+Content-Disposition: form-data; name="file"; filename="15.jpg"
+Content-Type: image/jpeg
+< ./15.jpg
+--boundary--
+
+# FIXME: not working
+# CURL example:
+# curl --insecure -X POST https://localhost:8081/api/v1/image   -H "Cookie: accessToken=eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxNSxjbnk2ODI5MkBiY29vcS5jb20iLCJpc3MiOiJEYkNvbm5lY3Rpb25BcHAiLCJyb2xlcyI6W3siaWQiOjEsIm5hbWUiOiJST0xFX1VTRVIifSx7ImlkIjo0LCJuYW1lIjoiUk9MRV9BRE1JTiJ9XSwiaWF0IjoxNzQ2MTkwODk4LCJleHAiOjE3NDYxOTQ0OTh9.M91XLmanE1NGn_bwws1AM8d-E107TgnjCDb8YfVUB1mxxvTpf9L3iHGxQaet5U_1iGpNrQwXZbTK_hzHqNe8eg"   -F "file=@4.jpg"
+# used to update user avatar image,
+# requires header: Content-Type: multipart/form-data, Cookie accessToken=<valid-token-data>
+# Examples
+# PATCH https://nebula.test.milkyway/api/v1/image
+# PATCH http://localhost:8081/api/v1/image

@@ -1,0 +1,93 @@
+# To be copied into the nebula-rest-api repository as
+# .github/workflows/deploy-prod.yml (complementing the existing test/dev
+# workflow at .github/workflows/deploy.yml, which must NOT be overwritten).
+#
+# Pattern copied from ci-templates/andromeda/deploy.yml:
+#   - Trigger is a merge from dev into main/master (pull_request "closed" +
+#     merged == true), not every push to master.
+#   - Deployment target is the K3s Deployment `nebula-rest-prod` in
+#     namespace `milkyway-apps` (see terraform/modules/nebula-rest).
+#   - Image is built and pushed to GHCR, then rolled out with
+#     `kubectl set image` + `kubectl rollout status`.
+#
+# Requires this repository to have a self-hosted runner registered with
+# labels [self-hosted, Linux, ARM64, raspberry-pi, prod-k3s] pointing at
+# rpi5-prod-01 (the same runner as Andromeda — see docs/prod/16-NEBULA-CICD.md).
+#
+# IMPORTANT: the `prod-k3s` label is required in `runs-on` below and MUST be
+# unique to the prod runner. The test/dev workflow's self-hosted runner
+# shares the generic [self-hosted, Linux, ARM64, raspberry-pi] labels, so
+# without an extra, prod-only label GitHub Actions can dispatch a
+# dev-branch job meant for the test runner onto the prod runner instead.
+#
+# No extra GHCR secret is needed: GITHUB_TOKEN is enough as long as the repo
+# (Settings -> Actions -> General -> Workflow permissions) grants
+# "Read and write permissions", which enables `packages: write` below.
+
+name: Deploy Nebula REST to production (K3s)
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main, master]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-deploy:
+    if: github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'dev'
+    runs-on: [self-hosted, Linux, ARM64, raspberry-pi, prod-k3s]
+    env:
+      IMAGE: ghcr.io/milkyway-homelabs/nebula-rest-prod
+      NAMESPACE: milkyway-apps
+      DEPLOYMENT: nebula-rest-prod
+      KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Build WAR (skip tests)
+        run: ./mvnw -B clean package -DskipTests -DtrimStackTrace=false
+
+      - name: Compute image tag from commit SHA
+        id: vars
+        run: echo "tag=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+      - name: Build image (native arm64, runner is a Raspberry Pi)
+        run: |
+          set -euo pipefail
+          WAR_FILE="$(ls target/*.war | xargs basename)"
+          docker build \
+            --build-arg WAR_FILE="$WAR_FILE" \
+            -t "${IMAGE}:${{ steps.vars.outputs.tag }}" \
+            -t "${IMAGE}:latest" \
+            -f ci/nebula-rest/Dockerfile .
+
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Push image
+        run: |
+          docker push "${IMAGE}:${{ steps.vars.outputs.tag }}"
+          docker push "${IMAGE}:latest"
+
+      - name: Roll out the new image on K3s
+        run: |
+          set -euo pipefail
+          sudo k3s kubectl -n "${NAMESPACE}" set image "deployment/${DEPLOYMENT}" \
+            "${DEPLOYMENT}=${IMAGE}:${{ steps.vars.outputs.tag }}"
+          sudo k3s kubectl -n "${NAMESPACE}" rollout status "deployment/${DEPLOYMENT}" --timeout=300s
+
+      - name: Clean up dangling local images
+        if: always()
+        run: docker image prune -f

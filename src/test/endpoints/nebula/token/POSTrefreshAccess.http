@@ -1,0 +1,8 @@
+POST https://localhost:8081/api/v1/token/refresh/access
+Content-Type: application/json
+Cookie: refreshToken=eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiIwMDFjODkwMy00ZGMzLTQyZmItODBlZC04ODczZDI3NWNiNDYiLCJzdWIiOiIxMjM0NTY4MDciLCJpc3MiOiJBbmRyb21lZGFBdXRoQXBpIiwicm9sZXMiOlt7ImlkIjoxLCJuYW1lIjoiUk9MRV9VU0VSIn1dLCJ2ZXJzaW9uIjo2LCJyZXZva2VkIjpmYWxzZSwic2Vzc2lvbl9leHAiOjE3ODAzMzA3OTU0NjgsImlhdCI6MTc3ODE3MDc5NSwiZXhwIjoxNzc4Nzc1NTk1fQ.y-MQGVTP0ywIOIeZ-C57a8i1T5mmakc6ulAZNTHjJO6wjF6Vn7MwosgY0Fv70zwX8AM2qxosGG0CDaoPvJgFRQ
+
+# used to refersh accessToken, requires valid cookie with refreshAccess
+# Examples
+# POST https://nebula.test.milkyway/api/v1/token/refresh/access
+# POST http://localhost:8081/api/v1/token/refresh/access

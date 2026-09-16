@@ -1,0 +1,12 @@
+POST https://localhost:8081/api/v1/account/token
+Content-Type: application/json
+
+# used to login, and get new tokens
+# Examples
+# POST https://nebula.test.milkyway/api/v1/account/token
+# POST http://localhost:8081/api/v1/account/token
+
+{
+  "email": "cny68292@bcooq.com",
+  "password": "test001"
+}

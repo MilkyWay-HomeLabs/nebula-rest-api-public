@@ -1,0 +1,7 @@
+PATCH https://localhost:8081/api/v1/account/unlock/1000025
+Content-Type: application/json
+
+# used to unlock account process, should return body with success and "type": "VERIFICATION_MAIL_FROM_UNLOCK"
+# Examples
+# PATCH https://nebula.test.milkyway/api/v1/account/unlock/{id}
+# PATCH http://localhost:8081/api/v1/account/unlock/1000025

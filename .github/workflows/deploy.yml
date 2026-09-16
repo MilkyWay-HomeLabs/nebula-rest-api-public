@@ -1,0 +1,90 @@
+name: Dev CI/CD with Coverage
+
+on:
+  push:
+    branches: [ dev ]
+
+env:
+  TOMCAT_APP_DIR: ${{ secrets.TOMCAT_APP_DIR_TEST_ENV }}
+  TOMCAT_ARCHIVE_DIR: ${{ secrets.TOMCAT_ARCHIVE_DIR_TEST_ENV }}
+
+jobs:
+  build-test-deploy:
+    runs-on: [self-hosted, Linux, X64, test]
+
+    env:
+      SPRING_PROFILES_ACTIVE: test
+      NEBULA_DB_URL: ${{ secrets.NEBULA_DB_URL }}
+      NEBULA_USERNAME: ${{ secrets.NEBULA_USERNAME }}
+      NEBULA_PASSWORD: ${{ secrets.NEBULA_PASSWORD }}
+      NEBULA_TEST_DB_URL: ${{ secrets.NEBULA_TEST_DB_URL }}
+      NEBULA_TEST_USERNAME: ${{ secrets.NEBULA_TEST_USERNAME }}
+      NEBULA_TEST_PASSWORD: ${{ secrets.NEBULA_TEST_PASSWORD }}
+      USER_AVATAR_UPLOAD_TEST_PATH: ${{ secrets.USER_AVATAR_UPLOAD_TEST_PATH }}
+      ANDROMEDA_AUTH_SERV_TEST_URL: ${{ secrets.ANDROMEDA_AUTH_SERV_TEST_URL }}
+      HEADER_FOR_AUTH_SERVER: ${{ secrets.HEADER_FOR_AUTH_SERVER }}
+      APP_JWT_SECRET: ${{ secrets.APP_JWT_SECRET }}
+      IMAGE_AVATAR_PATH: ${{ secrets.IMAGE_AVATAR_PATH }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Build and Test
+        run: ./mvnw -B clean verify -DtrimStackTrace=false
+
+      # Self-hosted runner: keep the JaCoCo report on local disk instead of
+      # uploading to GitHub artifact storage (which has a storage quota).
+      - name: Archive Coverage Report locally
+        run: |
+          set -euo pipefail
+          COVERAGE_DIR="$HOME/ci-coverage/nebula-rest-api/dev"
+          rm -rf "$COVERAGE_DIR"
+          mkdir -p "$COVERAGE_DIR"
+          cp -r target/site/jacoco/. "$COVERAGE_DIR/"
+          echo "Coverage report available at: $COVERAGE_DIR"
+
+      - name: Report to Hub
+        if: always()
+        continue-on-error: true
+        env:
+          HUB_URL: ${{ secrets.HUB_URL }}
+          HUB_CI_TOKEN: ${{ secrets.HUB_CI_TOKEN }}
+          COMPONENT_KEY: nebula/rest/nebula-rest-api
+          # milkyway.test's cert is self-signed; this self-hosted runner shares a host
+          # with the Traefik instance terminating it, so pin that cert rather than skip
+          # verification with curl -k.
+          HUB_CACERT: ${{ secrets.HUB_CACERT }}
+        run: ./ci/hub-report.sh
+
+      - name: Deploy
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+
+          APP_DIR="${TOMCAT_APP_DIR}"
+          ARCHIVE_DIR="${TOMCAT_ARCHIVE_DIR}"
+
+          sudo chown -R admin:admin "$(dirname "$APP_DIR")"
+          mkdir -p "$APP_DIR" "$ARCHIVE_DIR"
+
+          FULL_WAR_NAME=$(ls target/*.war | xargs basename)
+          VERSION=$(echo "$FULL_WAR_NAME" | sed 's/nebula-rest-api-//;s/.war//')
+
+          # 1) remove false dirs that looks like .war
+          find "$APP_DIR" -maxdepth 1 -type d -name 'nebula-rest-api##*.war' -exec rm -rf {} +
+
+          # 2) delete only .war (without dir conflicts)
+          find "$APP_DIR" -maxdepth 1 -type f -name 'nebula-rest-api##*.war' -delete
+
+          # 3) copy new artifacts
+          cp target/*.war "$ARCHIVE_DIR/nebula-rest-api##$VERSION.war"
+          cp target/*.war "$APP_DIR/nebula-rest-api##latest.war"
+          
+          sudo chown -R admin:admin "$APP_DIR" "$ARCHIVE_DIR"
+          docker restart nebula-rest-test

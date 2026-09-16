@@ -1,0 +1,30 @@
+PUT https://localhost:8081/api/v1/users/settings
+Content-Type: application/json
+Cookie: accessToken=eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiIyZWM5ZWRjZS1lZTFlLTRmMzQtYmNkZi1iYmFmN2NiN2JiNGYiLCJzdWIiOiIxMjM0NTY4MDciLCJpc3MiOiJBbmRyb21lZGFBdXRoQXBpIiwicm9sZXMiOlt7ImlkIjoxLCJuYW1lIjoiUk9MRV9VU0VSIn1dLCJ2ZXJzaW9uIjo2LCJyZXZva2VkIjpmYWxzZSwiaWF0IjoxNzc4MTcwNzk1LCJleHAiOjE3NzgxNzEwOTV9.C8g_frd24yRc-YCfgphtOUDfUF8YbFSIQr7Oi-mJor7lBtqVoPRy-ddoEE5_D7sn3Jj0ojV1Xl7k_G3SOe-clg
+
+# used to update user settings data stoerd in nebula database,
+# requires header: Content-Type: application/json
+# Examples
+# PUT https://nebula.test.milkyway/api/v1/users/settings
+# PUT http://localhost:8081/api/v1/users/settings
+
+{
+  "userId": 15,
+  "general": {
+    "userId": 15,
+    "theme": {
+      "id": 2,
+      "name": "fire"
+    }
+
+  },
+  "sound": {
+    "userId": 15,
+    "muted": false,
+    "battleCry": true,
+    "volumeMaster": 80,
+    "volumeMusic": 90,
+    "volumeEffects": 70,
+    "volumeVoices": 40
+  }
+}

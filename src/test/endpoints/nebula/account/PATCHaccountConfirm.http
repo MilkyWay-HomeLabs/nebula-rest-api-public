@@ -1,0 +1,12 @@
+PATCH https://localhost:8081/api/v1/account/confirm
+Content-Type: application/json
+
+# used to confirm accoutn, requires body with tokenId, and token record that is stored in database
+# Examples
+# PATCH https://nebula.test.milkyway/api/v1/account/confirm
+# PATCH http://localhost:8081/api/v1/account/confirm
+
+{
+  "tokenId": 31,
+  "token": "omC2bCkWf2GoUwJ2yxBAxhV4ezRgvhVmUJTyJaxJSqe2LFUAq0yvm07B7eANLnaFrhTwwszHP9DHf8eKBi24N7wMA7txR3hRzFe0"
+}

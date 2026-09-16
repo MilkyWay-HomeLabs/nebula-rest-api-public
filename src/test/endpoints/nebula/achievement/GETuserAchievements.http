@@ -1,0 +1,17 @@
+GET https://localhost:8081/api/v1/users/achievements?page=0&size=10&sortBy=achievementId&sortOrder=ASC&level=1&
+    filterType=equal
+Content-Type: application/json
+Cookie: accessToken=eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiIyZWM5ZWRjZS1lZTFlLTRmMzQtYmNkZi1iYmFmN2NiN2JiNGYiLCJzdWIiOiIxMjM0NTY4MDciLCJpc3MiOiJBbmRyb21lZGFBdXRoQXBpIiwicm9sZXMiOlt7ImlkIjoxLCJuYW1lIjoiUk9MRV9VU0VSIn1dLCJ2ZXJzaW9uIjo2LCJyZXZva2VkIjpmYWxzZSwiaWF0IjoxNzc4MTcwNzk1LCJleHAiOjE3NzgxNzEwOTV9.C8g_frd24yRc-YCfgphtOUDfUF8YbFSIQr7Oi-mJor7lBtqVoPRy-ddoEE5_D7sn3Jj0ojV1Xl7k_G3SOe-clg
+
+# requires cookie with valid accessToken
+# Examples
+# GET https://nebula.test.milkyway/api/v1/users/achievements?page=0&size=10&sortBy=achievementId&sortOrder=ASC&level=5&filterType=equal
+# GET http://localhost:8081/api/v1/users/achievements?page=0&size=10&sortBy=achievementId&sortOrder=ASC&level=5&filterType=equal
+
+# Example query parameters:
+# page=0                        : number of page to return
+# size=10                       : page size to return
+# sortBy=achievementId          : Field to sort results, e.g., achievementId (default)
+# sortOrder=asc                 : Sorting order: asc (ascending) or desc (descending, optional defaults to asc)
+# level=1                       : achievementr level value filter
+# filterType=less%20or%20equal  : level filter types: equal, less than, less or equal, greater, greater or equal
